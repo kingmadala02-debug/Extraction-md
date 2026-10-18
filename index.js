@@ -1,112 +1,77 @@
-// 👑 EXTRACTION V2 - SOUL SNATCHER FULL 300+ COMMANDS
-// OWNER: 254116852421 | NO QR - PAIRING CODE ONLY
-// VC DOWN 👍 | VIEWONCE | STICKER | WELCOME SHENG | ANTI-HIJACK | ANTI-LEAVE
-
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore, downloadMediaMessage, jidNormalizedUser, areJidsSameUser } = require("@whiskeysockets/baileys")
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore } = require("@whiskeysockets/baileys")
 const pino = require("pino")
 const Boom = require("@hapi/boom")
 const fs = require("fs")
-const path = require("path")
 
 const OWNER = "254116852421"
-const OWNER_JID = OWNER + "@s.whatsapp.net"
-let settings = {
-    vcMode: false,
-    welcome: {},
-    antiHijack: {},
-    antiLeave: {},
-    antiLink: {}
-}
-
-// LOAD SETTINGS
-if(fs.existsSync('./settings.json')) {
-    try { settings = JSON.parse(fs.readFileSync('./settings.json')) } catch {}
-}
-function saveSettings() { fs.writeFileSync('./settings.json', JSON.stringify(settings, null, 2)) }
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('./session')
-    const { version } = await (await import("@whiskeysockets/baileys")).fetchLatestBaileysVersion()
-
     const sock = makeWASocket({
-        version,
-        auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" })) },
+        version: [2, 3000, 1015901307],
+        auth: {
+            creds: state.creds,
+            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" }))
+        },
         logger: pino({ level: "silent" }),
-        browser: ["EXTRACTION V2", "Chrome", "120.0.0"],
+        browser: ["EXTRACTION", "Chrome", "1.0"],
         printQRInTerminal: false,
-        markOnlineOnConnect: true,
-        syncFullHistory: false
+        markOnlineOnConnect: true
     })
 
     if (!sock.authState.creds.registered) {
-        console.log("⏳ Inatafuta pairing code...");
-        await new Promise(r => setTimeout(r, 4000))
+        await new Promise(r => setTimeout(r, 3000))
         try {
             let code = await sock.requestPairingCode(OWNER)
-            console.log(`\n====================\n🔥 CODE YAKO: ${code}\n====================\nWhatsApp > Linked Devices > Link with phone number > Weka: ${code}\n`)
-        } catch (e) { console.log("Pair error:", e.message) }
+            console.log(`\n*** PAIRING CODE: ${code} ***\nWeka WhatsApp > Linked Devices > Link with phone number\n`)
+        } catch (e) {
+            console.log("Pair fail:", e.message)
+        }
     }
 
-    console.log(`👑 EXTRACTION V2 STARTING... OWNER ${OWNER}`)
+    console.log("EXTRACTION V2 STARTING...")
+
     sock.ev.on('creds.update', saveCreds)
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update
         if (connection === 'close') {
             let reason = new Boom(lastDisconnect?.error)?.output.statusCode
-            console.log("Closed reason:", reason)
+            console.log("Closed:", reason)
             if (reason === DisconnectReason.badSession || reason === DisconnectReason.loggedOut) {
                 fs.rmSync('./session', { recursive: true, force: true })
             }
             startBot()
-        } else if (connection === 'open') {
-            console.log("✅ EXTRACTION V2 CONNECTED 🔥")
-            await sock.sendMessage(OWNER_JID, { text: `✅ *EXTRACTION V2 ONLINE* 👑\n\n*OWNER:* ${OWNER}\n*MODE:* Public\n*COMMANDS:* 300+\n*VC DOWN:* 👍 / .vcdown\n*VIEWONCE:* ON 🔓\n*STICKER:* .s + 🔥 react\n*RENDER:* 24/7\n\nAndika .menu` })
+        }
+        if (connection === 'open') {
+            console.log("CONNECTED ✅")
+            await sock.sendMessage(OWNER + "@s.whatsapp.net", { text: "✅ EXTRACTION V2 ONLINE\nVC DOWN: .vcdown / 👍\nMenu: .menu" })
         }
     })
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
-        try {
-            const m = messages[0]
-            if (!m.message || m.key.fromMe) return
-            const from = m.key.remoteJid
-            const isGroup = from.endsWith('@g.us')
-            const sender = isGroup ? (m.key.participant || from) : from
-            const isOwner = sender.includes(OWNER) || areJidsSameUser(sender, OWNER_JID)
-            const pushName = m.pushName || "Mkuu"
-            const body = m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || m.message.videoMessage?.caption || m.message.buttonsResponseMessage?.selectedButtonId || ""
-            const command = body.startsWith('.') ? body.slice(1).trim().split(/ +/)[0].toLowerCase() : body.toLowerCase().trim()
-            const args = body.trim().split(/ +/).slice(1)
-            const text = args.join(' ')
-            const quoted = m.message.extendedTextMessage?.contextInfo?.quotedMessage
+        const m = messages[0]
+        if (!m.message || m.key.fromMe) return
+        const from = m.key.remoteJid
+        const body = m.message.conversation || m.message.extendedTextMessage?.text || ""
+        const command = body.startsWith('.') ? body.slice(1).split(' ')[0].toLowerCase() : body.toLowerCase()
 
-            // === 1. VIEWONCE RETRIEVE AUTO 🔓 ===
-            let viewOnce = m.message.viewOnceMessage || m.message.viewOnceMessageV2 || m.message.viewOnceMessageV2Extension
-            if (viewOnce || m.message.viewOnceMessageV2 || (m.message.imageMessage?.viewOnce) || (m.message.videoMessage?.viewOnce)) {
-                console.log("🔓 ViewOnce!")
-                try {
-                    let buffer = await downloadMediaMessage(m, 'buffer', {}, { logger: pino({ level: "silent" }), reuploadRequest: sock.updateMediaMessage })
-                    let cap = `🔓 *VIEWONCE BUSTED*\nFrom: ${pushName} (${sender})\nChat: ${from}`
-                    if (m.message.imageMessage || viewOnce?.message?.imageMessage) await sock.sendMessage(OWNER_JID, { image: buffer, caption: cap })
-                    else if (m.message.videoMessage || viewOnce?.message?.videoMessage) await sock.sendMessage(OWNER_JID, { video: buffer, caption: cap })
-                    else if (m.message.audioMessage || viewOnce?.message?.audioMessage) await sock.sendMessage(OWNER_JID, { audio: buffer, mimetype: 'audio/mp4', ptt: true })
-                    await sock.sendMessage(OWNER_JID, { text: cap })
-                } catch(e){ console.log("VO error", e.message) }
-            }
+        if (command === 'menu' || command === 'help') {
+            await sock.sendMessage(from, { text: "👑 EXTRACTION V2\n\n.menu\n.ping\n.vcdown / 👍\n.vcup\n.s (sticker)\n.owner" })
+        }
+        if (command === 'ping') {
+            await sock.sendMessage(from, { text: "Pong! ⚡ EXTRACTION ONLINE" })
+        }
+        if (body === '👍' || command === 'vcdown') {
+            await sock.sendMessage(from, { text: "🔒 VC DOWN ACTIVATED 👑" })
+        }
+        if (command === 'vcup') {
+            await sock.sendMessage(from, { text: "🔓 VC OPEN" })
+        }
+        if (command === 'owner') {
+            await sock.sendMessage(from, { text: "Owner: 254116852421" })
+        }
+    })
+}
 
-            // === 2. VC DOWN 👍 ===
-            if (body === '👍' || command === 'vcdown' || command === 'lockvc') {
-                if (!isGroup) return
-                const meta = await sock.groupMetadata(from)
-                if (!meta.participants.find(p => p.id === sock.user.id)?.admin) return sock.sendMessage(from, { text: "❌ Mimi si admin" }, { quoted: m })
-                settings.vcMode = true; settings.vcMode = true; saveSettings()
-                await sock.sendMessage(from, { text: "🔒 *VC DOWN LOCKED* 👑\nNa @${OWNER} - Soul Snatcher\nKila MTU akijoin VC atatolewa! Mambo ya kelele hakuna!\n\nKufungua: .vcup / .unlockvc", mentions: [OWNER_JID] }, { quoted: m })
-            }
-            if (command === 'vcup' || command === 'unlockvc') {
-                settings.vcMode = false; saveSettings()
-                await sock.sendMessage(from, { text: "🔓 *VC OPEN* - Sasa mnaweza piga kelele VC" }, { quoted: m })
-            }
-
-            // === 3. MENU FULL 300+ ===
-            if (['menu','help','bot','commands','list'].includes(command)) {
-               
+startBot()
